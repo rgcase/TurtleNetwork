@@ -9,6 +9,7 @@ import com.wavesplatform.features.FeatureProvider._
 import com.wavesplatform.settings.FunctionalitySettings
 import com.wavesplatform.state.diffs.CommonValidation
 import com.wavesplatform.transaction.smart.script.Script
+import com.wavesplatform.transaction.transfer.TransferTransaction
 import com.wavesplatform.transaction.{AssetId, Transaction}
 
 case class LeaseBalance(in: Long, out: Long)
@@ -99,7 +100,8 @@ object Sponsorship {
       .getOrElse(Int.MaxValue)
 
   def toWaves(assetFee: Long, sponsorship: Long): Long = {
-    val waves = (BigDecimal(assetFee) * BigDecimal(CommonValidation.FeeUnit)) / BigDecimal(sponsorship)
+    val waves = (BigDecimal(assetFee) * (CommonValidation.FeeConstants(TransferTransaction.typeId) * BigDecimal(CommonValidation.FeeUnit))) / BigDecimal(
+      sponsorship)
     if (waves > Long.MaxValue) {
       throw new java.lang.ArithmeticException("Overflow")
     }
@@ -107,7 +109,8 @@ object Sponsorship {
   }
 
   def fromWaves(wavesFee: Long, sponsorship: Long): Long = {
-    val assetFee = (BigDecimal(wavesFee) / BigDecimal(CommonValidation.FeeUnit)) * BigDecimal(sponsorship)
+    val assetFee = (BigDecimal(wavesFee) / (BigDecimal(CommonValidation.FeeUnit * CommonValidation.FeeConstants(TransferTransaction.typeId)))) * BigDecimal(
+      sponsorship)
     if (assetFee > Long.MaxValue) {
       throw new java.lang.ArithmeticException("Overflow")
     }

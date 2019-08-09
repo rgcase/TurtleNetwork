@@ -19,7 +19,7 @@ import com.wavesplatform.transaction.transfer._
 
 import scala.util.{Left, Right}
 
-object CommonValidation{
+object CommonValidation {
 
   val ScriptExtraFee = 4000000L
   val FeeUnit        = 100000
