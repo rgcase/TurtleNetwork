@@ -407,6 +407,7 @@ object Application {
     import com.wavesplatform.settings.Constants
     val settings = loadApplicationConfig(configFile.map(new File(_)))
 
+    val log = LoggerFacade(LoggerFactory.getLogger(getClass))
     log.info("Starting...")
     sys.addShutdownHook {
       SystemInformationReporter.report(settings.config)

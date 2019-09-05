@@ -116,10 +116,10 @@ inScope(Global)(
   Seq(
     scalaVersion := "2.12.8",
     organization := "com.wavesplatform",
-    organizationName := "Waves Platform",
-    organizationHomepage := Some(url("https://wavesplatform.com")),
-    scmInfo := Some(ScmInfo(url("https://github.com/wavesplatform/Waves"), "git@github.com:wavesplatform/Waves.git", None)),
-    licenses := Seq(("MIT", url("https://github.com/wavesplatform/Waves/blob/master/LICENSE"))),
+    organizationName := "TurtleNetwork",
+    organizationHomepage := Some(url("https://turtlenetwork.eu")),
+    scmInfo := Some(ScmInfo(url("https://github.com/BlackTurtle123/TurtleNetwork"), "git@github.com:BlackTurtle123/TurtleNetwork.git", None)),
+    licenses := Seq(("MIT", url("https://github.com/BlackTurtle123/TurtleNetwork/blob/master/LICENSE"))),
     scalacOptions ++= Seq(
       "-feature",
       "-deprecation",
