@@ -14,13 +14,13 @@ object CancelInvalidTx extends ScorexLogging {
     val addr4 = Address.fromString("3JtJ5Kf3XuAUiMhtDQasSPdpaG6X5WLa8cE").explicitGet()
     val addr5 = Address.fromString("3JwSzCsBpTZtqxkfdj3KuZgZJ33BcTBnqQr").explicitGet()
 
-    val bal1 = s.balance(addr1, None)
+    val bal1 = s.balance(addr1)
     log.info("before bal 1 " + bal1)
 
-    val bal2 = s.balance(addr2, None)
+    val bal2 = s.balance(addr2)
     log.info("before bal 2 " + bal2)
 
-    val bal3 = s.balance(addr3, None)
+    val bal3 = s.balance(addr3)
     log.info("before bal 3 " + bal3)
 
     val diff = s.collectLposPortfolios {
