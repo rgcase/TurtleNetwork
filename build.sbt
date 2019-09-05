@@ -48,17 +48,6 @@ lazy val versionSourceTask = (path: String) =>
     )
     Seq(versionFile)
 }
-<<<<<<< HEAD
-val network = SettingKey[Network]("network")
-network := { Network(sys.props.get("network")) }
-name := "TN"
-normalizedName := s"${name.value}${network.value.packageSuffix}"
-
-git.useGitDescribe := true
-git.uncommittedSignifier := Some("DIRTY")
-logBuffered := false
-=======
->>>>>>> c4f0fcf38824683d56e0685f9181df46b63c7299
 
 lazy val versionSourceSetting = (path: String) => inConfig(Compile)(Seq(sourceGenerators += versionSourceTask(path)))
 
@@ -161,96 +150,12 @@ inScope(Global)(
      * u - select the JUnit XML reporter with output directory
      */
     testOptions += Tests.Argument("-oIDOF", "-u", "target/test-reports"),
-    <<<<<<< HEAD
-      testOptions += Tests.Setup(_ => sys.props("sbt-testing") = "true")
-  ))
-
-inConfig(Linux)(
-  Seq(
-    maintainer := "blackturtle.eu",
-    packageSummary := "TN node",
-    packageDescription := "TN node"
-  ))
-
-bashScriptExtraDefines += s"""addJava "-DTN.directory=/var/lib/${normalizedName.value}""""
-
-val linuxScriptPattern = "bin/(.+)".r
-val batScriptPattern   = "bin/([^.]+)\\.bat".r
-
-inConfig(Universal)(
-  Seq(
-    mappings += (baseDirectory.value / s"TN-${network.value}.conf" -> "doc/TN.conf.sample"),
-    mappings := {
-      val scriptSuffix = network.value.packageSuffix
-      mappings.value.map {
-        case m @ (file, batScriptPattern(script)) =>
-          if (script.endsWith(scriptSuffix)) m else (file, s"bin/$script$scriptSuffix.bat")
-        case m @ (file, linuxScriptPattern(script)) =>
-          if (script.endsWith(scriptSuffix)) m else (file, s"bin/$script$scriptSuffix")
-        case other => other
-      }
-    },
-    javaOptions ++= Seq(
-      // -J prefix is required by the bash script
-      "-J-server",
-      // JVM memory tuning for 2g ram
-      "-J-Xms1024m",
-      "-J-Xmx4g",
-      "-J-XX:+ExitOnOutOfMemoryError",
-      // Java 9 support
-      "-J-XX:+IgnoreUnrecognizedVMOptions",
-      "-J--add-modules=java.xml.bind",
-      // from https://groups.google.com/d/msg/akka-user/9s4Yl7aEz3E/zfxmdc0cGQAJ
-      "-J-XX:+UseG1GC",
-      "-J-XX:+UseNUMA",
-      "-J-XX:+AlwaysPreTouch",
-      // probably can't use these with jstack and others tools
-      "-J-XX:+PerfDisableSharedMem",
-      "-J-XX:+ParallelRefProcEnabled",
-      "-J-XX:+UseStringDeduplication"
-    )
-  ))
-
-val packageSource = Def.setting {
-  sourceDirectory.value / "package"
-}
-
-val upstartScript = Def.task {
-  val src    = packageSource.value / "upstart.conf"
-  val dest   = (target in Debian).value / "upstart" / s"${packageName.value}.conf"
-  val result = TemplateWriter.generateScript(src.toURI.toURL, linuxScriptReplacements.value)
-  IO.write(dest, result)
-  dest
-}
-
-linuxPackageMappings ++= Seq(
-  (upstartScript.value, s"/etc/init/${packageName.value}.conf")
-).map(packageMapping(_).withConfig().withPerms("644"))
-
-linuxScriptReplacements += "detect-loader" ->
-  """is_systemd() {
-    |    which systemctl >/dev/null 2>&1 && \
-    |    systemctl | grep -- -\.mount >/dev/null 2>&1
-    |}
-    |is_upstart() {
-    |    /sbin/init --version | grep upstart >/dev/null 2>&1
-    |}
-    |""".stripMargin
-
-inConfig(Debian)(
-  Seq(
-    linuxStartScriptTemplate := (packageSource.value / "systemd.service").toURI.toURL,
-    debianPackageDependencies += "java8-runtime-headless",
-    serviceAutostart := false,
-    maintainerScripts := maintainerScriptsFromDirectory(packageSource.value / "debian", Seq("preinst", "postinst", "postrm", "prerm"))
-      =======
-        testOptions += Tests.Setup(_ => sys.props("sbt-testing") = "true"),
+    testOptions += Tests.Setup(_ => sys.props("sbt-testing") = "true"),
     concurrentRestrictions := {
       val threadNumber = Option(System.getenv("SBT_THREAD_NUMBER")).fold(1)(_.toInt)
       Seq(Tags.limit(Tags.ForkedTestGroup, threadNumber))
     },
     network := Network(sys.props.get("network"))
-      >>>>>>> c4f0fcf38824683d56e0685f9181df46b63c7299
   ))
 
 // ThisBuild options
