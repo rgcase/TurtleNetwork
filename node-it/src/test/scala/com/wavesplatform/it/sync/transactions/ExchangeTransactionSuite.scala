@@ -20,7 +20,7 @@ class ExchangeTransactionSuite extends BaseTransactionSuite with NTPTime {
       quantity = someAssetAmount,
       decimals = 2,
       reissuable = true,
-      fee = 1.waves,
+      fee = 1.TN,
       timestamp = System.currentTimeMillis()
     )
     .right
@@ -133,7 +133,7 @@ class ExchangeTransactionSuite extends BaseTransactionSuite with NTPTime {
         quantity = someAssetAmount,
         decimals = 8,
         reissuable = true,
-        fee = 1.waves,
+        fee = 1.TN,
         timestamp = System.currentTimeMillis()
       )
       .right

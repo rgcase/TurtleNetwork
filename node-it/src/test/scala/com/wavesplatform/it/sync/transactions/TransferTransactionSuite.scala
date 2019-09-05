@@ -5,7 +5,6 @@ import com.wavesplatform.common.utils.EitherExt2
 import com.wavesplatform.it.api.SyncHttpApi._
 import com.wavesplatform.it.sync._
 import com.wavesplatform.it.transactions.BaseTransactionSuite
-import com.wavesplatform.it.util._
 import com.wavesplatform.transaction.Asset.Waves
 import com.wavesplatform.transaction.transfer._
 import org.scalatest.CancelAfterFailure
@@ -89,7 +88,7 @@ class TransferTransactionSuite extends BaseTransactionSuite with CancelAfterFail
     for (v <- supportedVersions) {
       val (secondBalance, secondEffBalance) = miner.accountBalances(secondAddress)
 
-      assertBadRequestAndResponse(sender.transfer(secondAddress, firstAddress, secondBalance + 1.waves, minFee, version = v),
+      assertBadRequestAndResponse(sender.transfer(secondAddress, firstAddress, secondBalance + 1.TN,  minFee, version = v),
                                   "Attempt to transfer unavailable funds")
       miner.assertBalances(secondAddress, secondBalance, secondEffBalance)
     }

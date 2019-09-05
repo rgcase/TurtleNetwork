@@ -24,7 +24,7 @@ class InvokeScriptTransactionSuite extends BaseTransactionSuite with CancelAfter
         sender.address,
         recipient = contract.address,
         assetId = None,
-        amount = 5.waves,
+        amount = 5.TN,
         fee = minFee,
         waitForTx = true
       )
@@ -37,7 +37,7 @@ class InvokeScriptTransactionSuite extends BaseTransactionSuite with CancelAfter
         sender.address,
         recipient = contract.address,
         assetId = None,
-        amount = 5.waves,
+        amount = 5.TN,
         fee = minFee,
         waitForTx = true
       )
@@ -88,7 +88,7 @@ class InvokeScriptTransactionSuite extends BaseTransactionSuite with CancelAfter
       func = Some("foo"),
       args = List(CONST_BYTESTR(arg).explicitGet()),
       payment = Seq(),
-      fee = 1.waves,
+      fee = 1.TN,
       waitForTx = true
     )
 
@@ -104,7 +104,7 @@ class InvokeScriptTransactionSuite extends BaseTransactionSuite with CancelAfter
       contract.address,
       func = None,
       payment = Seq(),
-      fee = 1.waves,
+      fee = 1.TN,
       waitForTx = true
     )
     sender.getDataByKey(contract.address, "a") shouldBe StringDataEntry("a", "b")
@@ -118,7 +118,7 @@ class InvokeScriptTransactionSuite extends BaseTransactionSuite with CancelAfter
         .create(
           sender = contract,
           data = List(StringDataEntry("a", "OOO")),
-          feeAmount = 1.waves,
+          feeAmount = 1.TN,
           timestamp = System.currentTimeMillis(),
           proofs = Proofs.empty
         )

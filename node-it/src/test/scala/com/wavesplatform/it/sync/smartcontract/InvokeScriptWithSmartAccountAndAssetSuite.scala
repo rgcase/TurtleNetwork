@@ -21,9 +21,9 @@ class InvokeScriptWithSmartAccountAndAssetSuite extends BaseTransactionSuite wit
   var asset2: String = ""
 
   test("_send waves to dApp and caller accounts") {
-    val dAppTransferId        = sender.transfer(sender.address, dApp.address, 5.waves, minFee).id
-    val callerTransferId      = sender.transfer(sender.address, caller.address, 5.waves, minFee).id
-    val smartCallerTransferId = sender.transfer(sender.address, smartCaller.address, 5.waves, minFee).id
+    val dAppTransferId        = sender.transfer(sender.address, dApp.address, 5.TN, minFee).id
+    val callerTransferId      = sender.transfer(sender.address, caller.address, 5.TN, minFee).id
+    val smartCallerTransferId = sender.transfer(sender.address, smartCaller.address, 5.TN, minFee).id
 
     nodes.waitForHeightAriseAndTxPresent(smartCallerTransferId)
     nodes.waitForTransaction(callerTransferId)

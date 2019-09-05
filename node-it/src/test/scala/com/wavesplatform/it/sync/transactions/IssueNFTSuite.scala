@@ -21,7 +21,7 @@ class IssueNFTSuite extends BaseTransactionSuite with TableDrivenPropertyChecks 
       .overrideBase(_.quorum(0))
       .withDefault(1)
       .withSpecial(_.raw(s"""
-                            |waves.blockchain.custom.functionality.pre-activated-features = {
+                            |TN.blockchain.custom.functionality.pre-activated-features = {
                             |          2 = 0
                             |          3 = 0
                             |          4 = 0
@@ -44,13 +44,13 @@ class IssueNFTSuite extends BaseTransactionSuite with TableDrivenPropertyChecks 
     firstNode.transfer(
       firstNode.privateKey.address,
       firstNodeIssuer.address,
-      10.waves,
-      0.001.waves,
+      10.TN,
+      0.001.TN,
       waitForTx = true
     )
 
     assertBadRequest(
-      firstNode.issue(firstAddress, assetName, assetDescription, 1, 0, reissuable = false, 1.waves / 1000, waitForTx = true)
+      firstNode.issue(firstAddress, assetName, assetDescription, 1, 0, reissuable = false, 1.TN / 1000, waitForTx = true)
     )
   }
 
@@ -65,7 +65,7 @@ class IssueNFTSuite extends BaseTransactionSuite with TableDrivenPropertyChecks 
         quantity = 1,
         decimals = 0,
         reissuable = false,
-        fee = 0.001.waves,
+        fee = 0.001.TN,
         script = None,
         waitForTx = true)
       .id
@@ -84,7 +84,7 @@ class IssueNFTSuite extends BaseTransactionSuite with TableDrivenPropertyChecks 
         quantity = 1,
         decimals = 0,
         reissuable = true,
-        fee = 0.001.waves,
+        fee = 0.001.TN,
         script = None,
         waitForTx = true),
       "does not exceed minimal value"
@@ -102,7 +102,7 @@ class IssueNFTSuite extends BaseTransactionSuite with TableDrivenPropertyChecks 
         quantity = 2,
         decimals = 0,
         reissuable = false,
-        fee = 0.001.waves,
+        fee = 0.001.TN,
         script = None,
         waitForTx = true),
       "does not exceed minimal value"
@@ -120,7 +120,7 @@ class IssueNFTSuite extends BaseTransactionSuite with TableDrivenPropertyChecks 
         quantity = 1,
         decimals = 1,
         reissuable = false,
-        fee = 0.001.waves,
+        fee = 0.001.TN,
         script = None,
         waitForTx = true),
       "does not exceed minimal value"
@@ -128,7 +128,7 @@ class IssueNFTSuite extends BaseTransactionSuite with TableDrivenPropertyChecks 
   }
   test("nft assets balance should be returned by separate api endpoint") {
     secondNode
-      .issue(secondNode.address, "Common", "Common asset", quantity = 1, decimals = 1, reissuable = false, fee = 1.waves, script = None)
+      .issue(secondNode.address, "Common", "Common asset", quantity = 1, decimals = 1, reissuable = false, fee = 1.TN,  script = None)
       .id
     val issetsId = issueManyAssets(20)
     secondNode.waitForTransaction(issetsId.last)
@@ -164,7 +164,7 @@ class IssueNFTSuite extends BaseTransactionSuite with TableDrivenPropertyChecks 
             quantity = 1,
             decimals = 0,
             reissuable = false,
-            fee = 0.001.waves,
+            fee = 0.001.TN,
             script = None)
           .id)
   }

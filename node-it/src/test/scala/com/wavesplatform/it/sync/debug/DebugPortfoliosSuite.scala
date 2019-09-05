@@ -22,8 +22,8 @@ class DebugPortfoliosSuite extends FunSuite with NodesFromDocker {
 
   override protected def beforeAll(): Unit = {
     super.beforeAll()
-    sender.transfer(sender.address, firstAddress, 20.waves, minFee, waitForTx = true)
-    sender.transfer(sender.address, secondAddress, 20.waves, minFee, waitForTx = true)
+    sender.transfer(sender.address, firstAddress, 20.TN, minFee, waitForTx = true)
+    sender.transfer(sender.address, secondAddress, 20.TN, minFee, waitForTx = true)
   }
 
   test("getting a balance considering pessimistic transactions from UTX pool - changed after UTX") {

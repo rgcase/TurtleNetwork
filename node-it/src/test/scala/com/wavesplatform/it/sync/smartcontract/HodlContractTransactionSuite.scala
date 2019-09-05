@@ -23,7 +23,7 @@ class HodlContractTransactionSuite extends BaseTransactionSuite with CancelAfter
         sender.address,
         recipient = contract.address,
         assetId = None,
-        amount = 5.waves,
+        amount = 5.TN,
         fee = minFee,
         waitForTx = true
       )
@@ -36,7 +36,7 @@ class HodlContractTransactionSuite extends BaseTransactionSuite with CancelAfter
         sender.address,
         recipient = caller.address,
         assetId = None,
-        amount = 10.waves,
+        amount = 10.TN,
         fee = minFee,
         waitForTx = true
       )
@@ -104,15 +104,15 @@ class HodlContractTransactionSuite extends BaseTransactionSuite with CancelAfter
         dappAddress = contract.address,
         func = Some("deposit"),
         args = List.empty,
-        payment = Seq(InvokeScriptTransaction.Payment(1.5.waves, Waves)),
-        fee = 1.waves,
+        payment = Seq(InvokeScriptTransaction.Payment(1.5.TN,  Waves)),
+        fee = 1.TN,
         waitForTx = true
       )
       .id
 
     sender.waitForTransaction(invokeScriptId)
 
-    sender.getDataByKey(contract.address, caller.address) shouldBe IntegerDataEntry(caller.address, 1.5.waves)
+    sender.getDataByKey(contract.address, caller.address) shouldBe IntegerDataEntry(caller.address, 1.5.TN)
     val balanceAfter = sender.accountBalances(contract.address)._1
 
     (balanceAfter - balanceBefore) shouldBe 1.5.waves
@@ -124,7 +124,7 @@ class HodlContractTransactionSuite extends BaseTransactionSuite with CancelAfter
         caller.address,
         contract.address,
         func = Some("withdraw"),
-        args = List(CONST_LONG(1.51.waves)),
+        args = List(CONST_LONG(1.51.TN)),
         payment = Seq(),
         fee = 1.waves
       ),
@@ -139,16 +139,16 @@ class HodlContractTransactionSuite extends BaseTransactionSuite with CancelAfter
         caller.address,
         dappAddress = contract.address,
         func = Some("withdraw"),
-        args = List(CONST_LONG(1.49.waves)),
+        args = List(CONST_LONG(1.49.TN)),
         payment = Seq(),
-        fee = 1.waves,
+        fee = 1.TN,
         waitForTx = true
       )
       .id
 
     val balanceAfter = sender.accountBalances(contract.address)._1
 
-    sender.getDataByKey(contract.address, caller.address) shouldBe IntegerDataEntry(caller.address, 0.01.waves)
+    sender.getDataByKey(contract.address, caller.address) shouldBe IntegerDataEntry(caller.address, 0.01.TN)
     (balanceAfter - balanceBefore) shouldBe -1.49.waves
 
     val stateChangesInfo = sender.debugStateChanges(invokeScriptId).stateChanges

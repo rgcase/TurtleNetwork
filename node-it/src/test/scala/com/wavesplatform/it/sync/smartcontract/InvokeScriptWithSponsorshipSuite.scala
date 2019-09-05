@@ -25,8 +25,8 @@ class InvokeScriptWithSponsorshipSuite extends BaseTransactionSuite with CancelA
   var callerInitBalance: Long = 0
 
   test("_send waves to dApp and caller accounts") {
-    val dAppTransferId   = sender.transfer(sender.address, dApp.address, 5.waves, minFee).id
-    val callerTransferId = sender.transfer(sender.address, caller.address, 5.waves, minFee).id
+    val dAppTransferId   = sender.transfer(sender.address, dApp.address, 5.TN, minFee).id
+    val callerTransferId = sender.transfer(sender.address, caller.address, 5.TN, minFee).id
 
     nodes.waitForHeightAriseAndTxPresent(callerTransferId)
     nodes.waitForTransaction(dAppTransferId)
@@ -194,7 +194,7 @@ class InvokeScriptWithSponsorshipSuite extends BaseTransactionSuite with CancelA
 
     sender.assetBalance(dApp.address, dAppAsset).balance shouldBe halfQuantity + (feeAmount - 10) + smartFeeAmount
     sender.assetBalance(dApp.address, callerAsset).balance shouldBe halfQuantity + paymentAmount
-    sender.accountBalances(dApp.address)._1 shouldBe dAppInitBalance - 0.009.waves - 0.053.waves
+    sender.accountBalances(dApp.address)._1 shouldBe dAppInitBalance - 0.009.TN - 0.053.TN
 
     sender.assetBalance(caller.address, dAppAsset).balance shouldBe halfQuantity + (-feeAmount + 10) - smartFeeAmount
     sender.assetBalance(caller.address, callerAsset).balance shouldBe halfQuantity - paymentAmount

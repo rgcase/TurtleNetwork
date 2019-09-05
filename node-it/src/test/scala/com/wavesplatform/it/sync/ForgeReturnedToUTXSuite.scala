@@ -1,14 +1,11 @@
 package com.wavesplatform.it.sync
 
-import cats.kernel.Comparison.GreaterThan
 import com.typesafe.config.{Config, ConfigFactory}
 import com.wavesplatform.it.api.SyncHttpApi._
 import com.wavesplatform.it.transactions.NodesFromDocker
 import com.wavesplatform.it.util._
 import org.scalatest.{CancelAfterFailure, FunSuite, Matchers}
 
-import scala.concurrent.Future
-import scala.concurrent.duration._
 
 class ForgeReturnedToUTXSuite extends FunSuite with CancelAfterFailure with NodesFromDocker with Matchers {
 
@@ -48,7 +45,7 @@ object ForgeReturnedToUTXSuite {
   //microblock interval should be greater than avarage block interval
   val microblockInterval  = 60
   private val minerConfig = ConfigFactory.parseString(s"""
-                                                         |waves {
+                                                         |TN {
                                                          |  miner {
                                                          |    micro-block-interval = ${microblockInterval}s
                                                          |    min-micro-block-age = 60s

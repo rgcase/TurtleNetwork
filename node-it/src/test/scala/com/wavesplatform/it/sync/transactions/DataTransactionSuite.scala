@@ -238,19 +238,19 @@ class DataTransactionSuite extends BaseTransactionSuite {
                                 "Duplicate keys found")
 
     val extraValueData = List(BinaryDataEntry("key", ByteStr(Array.fill(MaxValueSize + 1)(1.toByte))))
-    assertBadRequestAndResponse(sender.putData(firstAddress, extraValueData, 1.waves), TooBig)
+    assertBadRequestAndResponse(sender.putData(firstAddress, extraValueData, 1.TN), TooBig)
     nodes.waitForHeightArise()
 
     val largeBinData = List.tabulate(5)(n => BinaryDataEntry(extraKey, ByteStr(Array.fill(MaxValueSize)(n.toByte))))
-    assertBadRequestAndResponse(sender.putData(firstAddress, largeBinData, 1.waves), TooBig)
+    assertBadRequestAndResponse(sender.putData(firstAddress, largeBinData, 1.TN), TooBig)
     nodes.waitForHeightArise()
 
     val largeStrData = List.tabulate(5)(n => StringDataEntry(extraKey, "A" * MaxValueSize))
-    assertBadRequestAndResponse(sender.putData(firstAddress, largeStrData, 1.waves), TooBig)
+    assertBadRequestAndResponse(sender.putData(firstAddress, largeStrData, 1.TN), TooBig)
     nodes.waitForHeightArise()
 
     val tooManyEntriesData = List.tabulate(MaxEntryCount + 1)(n => IntegerDataEntry("key", 88))
-    assertBadRequestAndResponse(sender.putData(firstAddress, tooManyEntriesData, 1.waves), TooBig)
+    assertBadRequestAndResponse(sender.putData(firstAddress, tooManyEntriesData, 1.TN), TooBig)
     nodes.waitForHeightArise()
   }
 
