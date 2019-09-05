@@ -113,7 +113,7 @@ object Sponsorship {
 
   def toWaves(assetFee: Long, sponsorship: Long): Long = {
     if (sponsorship == 0) return Long.MaxValue
-    val waves = BigInt(assetFee) * (CommonValidation.FeeConstants(TransferTransaction.typeId) * CommonValidation.FeeUnit / sponsorship
+    val waves = BigInt(assetFee) * CommonValidation.FeeConstants(TransferTransaction.typeId) * CommonValidation.FeeUnit / sponsorship
     waves.bigInteger.longValueExact()
   }
 
