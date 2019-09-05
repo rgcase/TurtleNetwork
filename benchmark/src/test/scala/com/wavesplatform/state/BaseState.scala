@@ -41,14 +41,9 @@ trait BaseState {
   private var _lastBlock: Block = _
   def lastBlock: Block          = _lastBlock
 
-<<<<<<< HEAD
-  protected def TN(n: Float): Long              = (n * 100000000L).toLong
-  protected val accountGen: Gen[PrivateKeyAccount] = Gen.containerOfN[Array, Byte](32, Arbitrary.arbitrary[Byte]).map(seed => PrivateKeyAccount(seed))
-=======
-  protected def waves(n: Float): Long = (n * 100000000L).toLong
+  protected def TN(n: Float): Long = (n * 100000000L).toLong
   protected val accountGen: Gen[KeyPair] =
     Gen.containerOfN[Array, Byte](32, Arbitrary.arbitrary[Byte]).map(seed => KeyPair(seed))
->>>>>>> c4f0fcf38824683d56e0685f9181df46b63c7299
 
   protected def updateFunctionalitySettings(base: FunctionalitySettings): FunctionalitySettings = base
 

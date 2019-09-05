@@ -52,15 +52,9 @@ class SmartGenerator(settings: SmartGenerator.Settings, val accounts: Seq[KeyPai
       val buyer           = randomFrom(accounts).get
       val asset           = randomFrom(settings.assets.toSeq)
       val tradeAssetIssue = ByteStr.decodeBase58(asset.get).toOption
-<<<<<<< HEAD:generator/src/main/scala/com.wavesplatform.generator/SmartGenerator.scala
-      val pair            = AssetPair(None, tradeAssetIssue)
+      val pair            = AssetPair(Waves, Asset.fromCompatId(tradeAssetIssue))
       val sellOrder       = OrderV2.sell(seller, matcher, pair, 100000000L, 1, ts, ts + 30.days.toMillis, 0.04.TN)
       val buyOrder        = OrderV2.buy(buyer, matcher, pair, 100000000L, 1, ts, ts + 1.day.toMillis, 0.04.TN)
-=======
-      val pair            = AssetPair(Waves, Asset.fromCompatId(tradeAssetIssue))
-      val sellOrder       = OrderV2.sell(seller, matcher, pair, 100000000L, 1, ts, ts + 30.days.toMillis, 0.003.waves)
-      val buyOrder        = OrderV2.buy(buyer, matcher, pair, 100000000L, 1, ts, ts + 1.day.toMillis, 0.003.waves)
->>>>>>> c4f0fcf38824683d56e0685f9181df46b63c7299:node-generator/src/main/scala/com/wavesplatform/generator/SmartGenerator.scala
 
       ExchangeTransactionV2.create(matcher, buyOrder, sellOrder, 100000000, 1, 0.04.TN, 0.04.TN, 0.011.TN, ts).explicitGet()
     }
