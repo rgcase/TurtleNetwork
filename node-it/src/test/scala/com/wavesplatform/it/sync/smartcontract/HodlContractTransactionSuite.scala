@@ -115,7 +115,7 @@ class HodlContractTransactionSuite extends BaseTransactionSuite with CancelAfter
     sender.getDataByKey(contract.address, caller.address) shouldBe IntegerDataEntry(caller.address, 1.5.TN)
     val balanceAfter = sender.accountBalances(contract.address)._1
 
-    (balanceAfter - balanceBefore) shouldBe 1.5.waves
+    (balanceAfter - balanceBefore) shouldBe 1.5.TN
   }
 
   test("caller can't withdraw more than owns") {
