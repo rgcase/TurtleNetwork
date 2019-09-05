@@ -1,5 +1,6 @@
 package com.wavesplatform.common.state
 
+import com.wavesplatform.common.utils.{Base58, Base64}
 import org.scalatest.{Matchers, WordSpecLike}
 
 class ByteStrTest extends Matchers with WordSpecLike {
@@ -51,6 +52,30 @@ class ByteStrTest extends Matchers with WordSpecLike {
       ByteStr(getSeqBytesArr(10)).dropRight(6) shouldBe ByteStr(Array[Byte](1, 2, 3, 4))
       ByteStr(getSeqBytesArr(3)).dropRight(-100) shouldBe ByteStr(getSeqBytesArr(3))
       ByteStr(getSeqBytesArr(3)).dropRight(100) shouldBe ByteStr.empty
+    }
+
+    "serialize to base64 if huge" in {
+      val arr      = new Array[Byte](1024)
+      val expected = "base64:" + Base64.encode(arr)
+      ByteStr(arr).toString shouldBe expected
+    }
+
+    "serialize to base58 if small" in {
+      val arr      = new Array[Byte](1023)
+      val expected = Base58.encode(arr)
+      ByteStr(arr).toString shouldBe expected
+    }
+
+    "trim using base64 if huge" in {
+      val arr      = new Array[Byte](1024)
+      val expected = Base64.encode(arr) + "..."
+      ByteStr(arr).trim shouldBe expected
+    }
+
+    "trim using base64 if small" in {
+      val arr      = new Array[Byte](1023)
+      val expected = Base58.encode(arr).take(7) + "..."
+      ByteStr(arr).trim shouldBe expected
     }
   }
 }

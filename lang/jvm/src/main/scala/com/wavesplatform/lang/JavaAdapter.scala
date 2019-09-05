@@ -1,7 +1,7 @@
 package com.wavesplatform.lang
 
 import cats.kernel.Monoid
-import com.wavesplatform.lang.StdLibVersion.V2
+import com.wavesplatform.lang.directives.values.V2
 import com.wavesplatform.lang.v1.compiler.ExpressionCompiler
 import com.wavesplatform.lang.v1.compiler.Terms.EXPR
 import com.wavesplatform.lang.v1.evaluator.ctx.impl.waves.WavesContext
@@ -13,9 +13,9 @@ object JavaAdapter {
   lazy val ctx =
     Monoid.combineAll(
       Seq(
-        CryptoContext.compilerContext(com.wavesplatform.lang.Global),
-        WavesContext.build(version, null, false).compilerContext,
-        PureContext.build(version).compilerContext
+        CryptoContext.compilerContext(Global, version),
+        WavesContext.build(???, null).compilerContext,
+        PureContext.build(Global, version).compilerContext
       ))
 
   def compile(input: String): EXPR = {

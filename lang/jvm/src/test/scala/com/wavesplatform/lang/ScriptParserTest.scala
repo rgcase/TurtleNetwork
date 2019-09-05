@@ -10,8 +10,8 @@ import com.wavesplatform.lang.v1.testing.ScriptGenParser
 import fastparse.core.Parsed.{Failure, Success}
 import org.scalacheck.Gen
 import org.scalatest.exceptions.TestFailedException
-import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Matchers, PropSpec}
+import org.scalatestplus.scalacheck.{ScalaCheckPropertyChecks => PropertyChecks}
 import scorex.crypto.encode.{Base58 => ScorexBase58}
 
 class ScriptParserTest extends PropSpec with PropertyChecks with Matchers with ScriptGenParser with NoShrink {
@@ -23,7 +23,7 @@ class ScriptParserTest extends PropSpec with PropertyChecks with Matchers with S
 
   private def catchParseError(x: String, e: Failure[Char, String]): Nothing = {
     import e.{index => i}
-    println(s"val code1 = new String(Array[Byte](${x.getBytes.mkString(",")}))")
+    println(s"val code1 = new String(Array[Byte](${x.getBytes("UTF-8").mkString(",")}))")
     println(s"""val code2 = "${escapedCode(x)}"""")
     println(s"Can't parse (len=${x.length}): <START>\n$x\n<END>\nError: $e\nPosition ($i): '${x.slice(i, i + 1)}'\nTraced:\n${e.extra.traced.fullStack
       .mkString("\n")}")
@@ -137,7 +137,7 @@ class ScriptParserTest extends PropSpec with PropertyChecks with Matchers with S
   }
 
   property("valid non-empty base58 definition") {
-    parse("base58'bQbp'") shouldBe CONST_BYTESTR(AnyPos, PART.VALID(AnyPos, ByteStr("foo".getBytes)))
+    parse("base58'bQbp'") shouldBe CONST_BYTESTR(AnyPos, PART.VALID(AnyPos, ByteStr("foo".getBytes("UTF-8"))))
   }
 
   property("valid empty base58 definition") {
@@ -149,7 +149,7 @@ class ScriptParserTest extends PropSpec with PropertyChecks with Matchers with S
   }
 
   property("valid non-empty base64 definition") {
-    parse("base64'TElLRQ=='") shouldBe CONST_BYTESTR(AnyPos, PART.VALID(AnyPos, ByteStr("LIKE".getBytes)))
+    parse("base64'TElLRQ=='") shouldBe CONST_BYTESTR(AnyPos, PART.VALID(AnyPos, ByteStr("LIKE".getBytes("UTF-8"))))
   }
 
   property("valid empty base64 definition") {
@@ -158,6 +158,21 @@ class ScriptParserTest extends PropSpec with PropertyChecks with Matchers with S
 
   property("invalid base64 definition") {
     parse("base64'mid-size'") shouldBe CONST_BYTESTR(AnyPos, PART.INVALID(AnyPos, "can't parse Base64 string"))
+  }
+
+  property("valid empty base16 definition") {
+    parse("base16''") shouldBe CONST_BYTESTR(AnyPos, PART.VALID(AnyPos, ByteStr.empty))
+  }
+
+  property("valid non-empty base16 definition") {
+    parse("base16'0123456789abcdef123456789ABCDEF0ABCDEFfabcde'") shouldBe
+        CONST_BYTESTR(AnyPos, PART.VALID(AnyPos, ByteStr(Array[Short](
+          0x01, 0x23, 0x45, 0x67, 0x89, 0xab, 0xcd, 0xef, 0x12, 0x34, 0x56, 0x78, 0x9A, 0xBC, 0xDE, 0xF0, 0xAB, 0xCD, 0xEF, 0xfa, 0xbc, 0xde).map(_.toByte))))
+  }
+
+  property("invalid base16 definition") {
+    parse("base16'mid-size'") shouldBe CONST_BYTESTR(AnyPos, PART.INVALID(AnyPos, "m isn't base16/hex digit"))
+    parse("base16'123'") shouldBe CONST_BYTESTR(AnyPos, PART.INVALID(AnyPos, "Need internal bytes number"))
   }
 
   property("literal too long") {
@@ -564,26 +579,26 @@ class ScriptParserTest extends PropSpec with PropertyChecks with Matchers with S
 
   property("crypto functions: sha256") {
     val text        = "❤✓☀★☂♞☯☭☢€☎∞❄♫\u20BD=test message"
-    val encodedText = ScorexBase58.encode(text.getBytes)
+    val encodedText = ScorexBase58.encode(text.getBytes("UTF-8"))
 
     parse(s"sha256(base58'$encodedText')".stripMargin) shouldBe
-      FUNCTION_CALL(Pos(0, 96), PART.VALID(Pos(0, 6), "sha256"), List(CONST_BYTESTR(Pos(7, 95), PART.VALID(Pos(15, 94), ByteStr(text.getBytes)))))
+      FUNCTION_CALL(Pos(0, 96), PART.VALID(Pos(0, 6), "sha256"), List(CONST_BYTESTR(Pos(7, 95), PART.VALID(Pos(15, 94), ByteStr(text.getBytes("UTF-8"))))))
   }
 
   property("crypto functions: blake2b256") {
     val text        = "❤✓☀★☂♞☯☭☢€☎∞❄♫\u20BD=test message"
-    val encodedText = ScorexBase58.encode(text.getBytes)
+    val encodedText = ScorexBase58.encode(text.getBytes("UTF-8"))
 
     parse(s"blake2b256(base58'$encodedText')".stripMargin) shouldBe
-      FUNCTION_CALL(AnyPos, PART.VALID(AnyPos, "blake2b256"), List(CONST_BYTESTR(AnyPos, PART.VALID(AnyPos, ByteStr(text.getBytes)))))
+      FUNCTION_CALL(AnyPos, PART.VALID(AnyPos, "blake2b256"), List(CONST_BYTESTR(AnyPos, PART.VALID(AnyPos, ByteStr(text.getBytes("UTF-8"))))))
   }
 
   property("crypto functions: keccak256") {
     val text        = "❤✓☀★☂♞☯☭☢€☎∞❄♫\u20BD=test message"
-    val encodedText = ScorexBase58.encode(text.getBytes)
+    val encodedText = ScorexBase58.encode(text.getBytes("UTF-8"))
 
     parse(s"keccak256(base58'$encodedText')".stripMargin) shouldBe
-      FUNCTION_CALL(AnyPos, PART.VALID(AnyPos, "keccak256"), List(CONST_BYTESTR(AnyPos, PART.VALID(AnyPos, ByteStr(text.getBytes)))))
+      FUNCTION_CALL(AnyPos, PART.VALID(AnyPos, "keccak256"), List(CONST_BYTESTR(AnyPos, PART.VALID(AnyPos, ByteStr(text.getBytes("UTF-8"))))))
   }
 
   property("should parse a binary operation without a second operand") {
@@ -1229,6 +1244,23 @@ class ScriptParserTest extends PropSpec with PropertyChecks with Matchers with S
     )
   }
 
+  property("comments - in func and around") {
+    val code =
+      """
+        |
+        | # comment 1
+        | func foo() = # comment 2
+        | { # more comments
+        |   throw()
+        | } # comment 3
+        |
+        | foo()
+        |
+        """.stripMargin
+
+    parse(code)
+  }
+
   property("operations priority") {
     parse("a-b+c") shouldBe BINARY_OP(AnyPos,
                                       BINARY_OP(AnyPos, REF(AnyPos, PART.VALID(AnyPos, "a")), SUB_OP, REF(AnyPos, PART.VALID(AnyPos, "b"))),
@@ -1250,11 +1282,15 @@ class ScriptParserTest extends PropSpec with PropertyChecks with Matchers with S
                                       BINARY_OP(AnyPos, REF(AnyPos, PART.VALID(AnyPos, "a")), DIV_OP, REF(AnyPos, PART.VALID(AnyPos, "b"))),
                                       MUL_OP,
                                       REF(AnyPos, PART.VALID(AnyPos, "c")))
+
     parse("a<b==c>=d") shouldBe BINARY_OP(
       AnyPos,
-      BINARY_OP(AnyPos, REF(AnyPos, PART.VALID(AnyPos, "b")), LT_OP, REF(AnyPos, PART.VALID(AnyPos, "a"))),
-      EQ_OP,
-      BINARY_OP(AnyPos, REF(AnyPos, PART.VALID(AnyPos, "c")), GE_OP, REF(AnyPos, PART.VALID(AnyPos, "d")))
+      BINARY_OP(AnyPos,
+                BINARY_OP(AnyPos, REF(AnyPos, PART.VALID(AnyPos, "b")), EQ_OP, REF(AnyPos, PART.VALID(AnyPos, "c"))),
+                LT_OP,
+                REF(AnyPos, PART.VALID(AnyPos, "a"))),
+      GE_OP,
+      REF(AnyPos, PART.VALID(AnyPos, "d"))
     )
   }
 

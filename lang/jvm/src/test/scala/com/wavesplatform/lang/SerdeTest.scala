@@ -3,7 +3,8 @@ package com.wavesplatform.lang
 import com.wavesplatform.common.state.ByteStr
 import com.wavesplatform.common.utils.EitherExt2
 import com.wavesplatform.lang.Common._
-import com.wavesplatform.lang.StdLibVersion._
+import com.wavesplatform.lang.directives.values._
+import com.wavesplatform.lang.script.Script
 import com.wavesplatform.lang.v1.compiler.ExpressionCompiler
 import com.wavesplatform.lang.v1.compiler.Terms._
 import com.wavesplatform.lang.v1.evaluator.ctx.impl.PureContext
@@ -11,15 +12,15 @@ import com.wavesplatform.lang.v1.parser.Expressions
 import com.wavesplatform.lang.v1.testing.ScriptGen
 import com.wavesplatform.lang.v1.{FunctionHeader, Serde}
 import org.scalacheck.{Arbitrary, Gen}
-import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Assertion, FreeSpec, Matchers}
+import org.scalatestplus.scalacheck.{ScalaCheckPropertyChecks => PropertyChecks}
 
 class SerdeTest extends FreeSpec with PropertyChecks with Matchers with ScriptGen with NoShrink {
 
   "roundtrip" - {
-    "CONST_LONG" in roundTripTest(CONST_LONG(1))
-    "CONST_BYTESTR" in roundTripTest(CONST_BYTESTR(ByteStr.fromBytes(1)))
-    "CONST_STRING" in roundTripTest(CONST_STRING("foo"))
+    "CONST_LONG"    in roundTripTest(CONST_LONG(1))
+    "CONST_BYTESTR" in roundTripTest(CONST_BYTESTR(ByteStr.fromBytes(1)).explicitGet())
+    "CONST_STRING"  in roundTripTest(CONST_STRING("foo").explicitGet())
 
     "IF" in roundTripTest(IF(TRUE, CONST_LONG(0), CONST_LONG(1)))
 
@@ -111,6 +112,19 @@ class SerdeTest extends FreeSpec with PropertyChecks with Matchers with ScriptGe
     }
   }
 
+  "incorrect base64" in {
+    def measureBase64Deser(base64: String): Unit = {
+      val (r, time) = measureTime(Script.fromBase64String(base64))
+
+      r should produce("arguments too big")
+      time should be <= 1000L
+    }
+
+    measureBase64Deser("AgQAAAABYgEAAAAEAAAAAAkAAAAA/wACCQAB9wAAAAEFAAAAAWIJAAH3AAAAAQUAAAABYi+LkdA=")
+    measureBase64Deser("AgQAAAABYgEAAAAEAAAAAAkAAAAAAAACCQAB9wD/AAEFAAAAAWIJAAH3AAAAAQUAAAABYtKFiCk=")
+    measureBase64Deser("AgQAAAABYgEAAAAEAAAAAAkAAAAAAAACCQAB9wAAAAEFAAAAAWIJAAH3AP8AAQUAAAABYpURGZc=")
+  }
+
   def measureTime[A](f: => A): (A, Long) = {
     val start  = System.currentTimeMillis()
     val result = f
@@ -118,7 +132,7 @@ class SerdeTest extends FreeSpec with PropertyChecks with Matchers with ScriptGe
   }
 
   private def roundTripTest(untypedExpr: Expressions.EXPR): Assertion = {
-    val typedExpr = ExpressionCompiler(PureContext.build(V1).compilerContext, untypedExpr).map(_._1).explicitGet()
+    val typedExpr = ExpressionCompiler(PureContext.build(Global, V1).compilerContext, untypedExpr).map(_._1).explicitGet()
     roundTripTest(typedExpr)
   }
 

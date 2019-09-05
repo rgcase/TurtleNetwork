@@ -1,21 +1,22 @@
 package com.wavesplatform.lang.compiler
 
 import com.wavesplatform.common.state.ByteStr
+import com.wavesplatform.common.utils.EitherExt2
 import com.wavesplatform.lang.Common
 import com.wavesplatform.lang.Common._
 import com.wavesplatform.lang.v1.compiler.Terms._
 import com.wavesplatform.lang.v1.compiler.Types._
 import com.wavesplatform.lang.v1.compiler.{CompilerContext, ExpressionCompiler}
 import com.wavesplatform.lang.v1.evaluator.ctx.impl.PureContext._
-import com.wavesplatform.lang.v1.evaluator.ctx.impl.{PureContext, _}
+import com.wavesplatform.lang.v1.evaluator.ctx.impl.PureContext
 import com.wavesplatform.lang.v1.parser.BinaryOperation.SUM_OP
 import com.wavesplatform.lang.v1.parser.Expressions.Pos
 import com.wavesplatform.lang.v1.parser.Expressions.Pos.AnyPos
 import com.wavesplatform.lang.v1.parser.{Expressions, Parser}
 import com.wavesplatform.lang.v1.testing.ScriptGen
 import com.wavesplatform.lang.v1.{FunctionHeader, compiler}
-import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Matchers, PropSpec}
+import org.scalatestplus.scalacheck.{ScalaCheckPropertyChecks => PropertyChecks}
 
 class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matchers with ScriptGen with NoShrink {
 
@@ -50,31 +51,34 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
   }
 
   treeTypeTest("GETTER")(
-    ctx = CompilerContext(predefTypes = Map(pointType.name -> pointType),
-                          varDefs = Map("p"                -> (pointType.typeRef -> "Test variable")),
-                          functionDefs = Map.empty),
+    ctx =
+      CompilerContext(predefTypes = Map(pointType.name -> pointType), varDefs = Map("p" -> (pointType -> "Test variable")), functionDefs = Map.empty),
     expr = Expressions.GETTER(
       AnyPos,
       ref = Expressions.REF(AnyPos, Expressions.PART.VALID(AnyPos, "p")),
       field = Expressions.PART.VALID(AnyPos, "x")
     ),
-    expectedResult = Right((GETTER(expr = REF("p"), field = "x"), LONG))
+  expectedResult = {
+      res: Either[String, (EXPR, TYPE)] => res shouldBe Right((GETTER(expr = REF("p"), field = "x"), LONG))
+    }
   )
 
   treeTypeTest("REF(OBJECT)")(
-    ctx = CompilerContext(predefTypes = Map(pointType.name -> pointType),
-                          varDefs = Map("p"                -> (pointType.typeRef -> "Test variable")),
-                          functionDefs = Map.empty),
+    ctx =
+      CompilerContext(predefTypes = Map(pointType.name -> pointType), varDefs = Map("p" -> (pointType -> "Test variable")), functionDefs = Map.empty),
     expr = Expressions.REF(AnyPos, Expressions.PART.VALID(AnyPos, "p")),
-    expectedResult = Right((REF("p"), pointType.typeRef))
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right((REF("p"), pointType))
+      }
   )
 
   treeTypeTest("REF x = y")(
-    ctx = CompilerContext(predefTypes = Map(pointType.name -> pointType),
-                          varDefs = Map("p"                -> (pointType.typeRef -> "Test variable")),
-                          functionDefs = Map.empty),
+    ctx =
+      CompilerContext(predefTypes = Map(pointType.name -> pointType), varDefs = Map("p" -> (pointType -> "Test variable")), functionDefs = Map.empty),
     expr = Expressions.REF(AnyPos, Expressions.PART.VALID(AnyPos, "p")),
-    expectedResult = Right((REF("p"), pointType.typeRef))
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right((REF("p"), pointType))
+      }
   )
 
   treeTypeTest("MULTIPLY(1,2)")(
@@ -84,7 +88,9 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
       Expressions.PART.VALID(AnyPos, multiplierFunction.name),
       List(Expressions.CONST_LONG(AnyPos, 1), Expressions.CONST_LONG(AnyPos, 2))
     ),
-    expectedResult = Right((FUNCTION_CALL(multiplierFunction.header, List(CONST_LONG(1), CONST_LONG(2))), LONG))
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right((FUNCTION_CALL(multiplierFunction.header, List(CONST_LONG(1), CONST_LONG(2))), LONG))
+      }
   )
 
   treeTypeTest("primitive getElement")(
@@ -94,7 +100,9 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
       Expressions.PART.VALID(AnyPos, getElement.name),
       List(Expressions.REF(AnyPos, Expressions.PART.VALID(AnyPos, "l")), Expressions.CONST_LONG(AnyPos, 1))
     ),
-    expectedResult = Right((FUNCTION_CALL(getElement.header, List(REF("l"), CONST_LONG(1))), LONG))
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right((FUNCTION_CALL(getElement.header, List(REF("l"), CONST_LONG(1))), LONG))
+      }
   )
 
   treeTypeTest("typeref getElement")(
@@ -104,7 +112,9 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
       Expressions.PART.VALID(AnyPos, getElement.name),
       List(Expressions.REF(AnyPos, Expressions.PART.VALID(AnyPos, "lpa")), Expressions.CONST_LONG(AnyPos, 1))
     ),
-    expectedResult = Right((FUNCTION_CALL(getElement.header, List(REF("lpa"), CONST_LONG(1))), Common.pointTypeA.typeRef))
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right((FUNCTION_CALL(getElement.header, List(REF("lpa"), CONST_LONG(1))), Common.pointTypeA))
+      }
   )
 
   treeTypeTest("union getElement")(
@@ -114,7 +124,9 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
       Expressions.PART.VALID(AnyPos, getElement.name),
       List(Expressions.REF(AnyPos, Expressions.PART.VALID(AnyPos, "lpabc")), Expressions.CONST_LONG(AnyPos, 1))
     ),
-    expectedResult = Right((FUNCTION_CALL(getElement.header, List(REF("lpabc"), CONST_LONG(1))), Common.AorBorC))
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right((FUNCTION_CALL(getElement.header, List(REF("lpabc"), CONST_LONG(1))), Common.AorBorC))
+      }
   )
 
   //     let a = if (true) then 1 else ""
@@ -139,8 +151,17 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
         List(Expressions.REF(AnyPos, Expressions.PART.VALID(AnyPos, "a")), Expressions.CONST_LONG(AnyPos, 3))
       )
     ),
-    expectedResult = Right(
-      (LET_BLOCK(LET("a", IF(TRUE, CONST_LONG(1), CONST_STRING(""))), FUNCTION_CALL(PureContext.eq.header, List(REF("a"), CONST_LONG(3)))), BOOLEAN))
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right(
+          (
+            LET_BLOCK(
+              LET("a", IF(TRUE, CONST_LONG(1), CONST_STRING("").explicitGet())),
+              FUNCTION_CALL(PureContext.eq.header, List(REF("a"), CONST_LONG(3)))
+            ),
+            BOOLEAN
+          )
+        )
+      }
   )
 
   treeTypeTest("idOptionLong(())")(
@@ -150,7 +171,9 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
       Expressions.PART.VALID(AnyPos, idOptionLong.name),
       List(Expressions.REF(AnyPos, Expressions.PART.VALID(AnyPos, "unit")))
     ),
-    expectedResult = Right((FUNCTION_CALL(idOptionLong.header, List(REF("unit"))), UNIT))
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right((FUNCTION_CALL(idOptionLong.header, List(REF("unit"))), UNIT))
+      }
   )
 
   treeTypeTest("pattern matching - allow shadowing of ref with the same name")(
@@ -173,26 +196,28 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
         )
       )
     ),
-    expectedResult = Right(
-      (LET_BLOCK(
-         LET("$match0", REF("p")),
-         IF(
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right(
+        (LET_BLOCK(
+           LET("$match0", REF("p")),
            IF(
-             FUNCTION_CALL(
-               PureContext._isInstanceOf.header,
-               List(REF("$match0"), CONST_STRING("PointB"))
+             IF(
+               FUNCTION_CALL(
+                 PureContext._isInstanceOf.header,
+                 List(REF("$match0"), CONST_STRING("PointB").explicitGet())
+               ),
+               TRUE,
+               FUNCTION_CALL(
+                 PureContext._isInstanceOf.header,
+                 List(REF("$match0"), CONST_STRING("PointA").explicitGet())
+               )
              ),
-             TRUE,
-             FUNCTION_CALL(
-               PureContext._isInstanceOf.header,
-               List(REF("$match0"), CONST_STRING("PointA"))
-             )
-           ),
-           LET_BLOCK(LET("p", REF("$match0")), TRUE),
-           FALSE
-         )
-       ),
-       BOOLEAN))
+             LET_BLOCK(LET("p", REF("$match0")), TRUE),
+             FALSE
+           )
+         ),
+         BOOLEAN))
+    }
   )
 
   treeTypeTest("pattern matching - nested matches increment tmp var name")(
@@ -214,7 +239,7 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
       Parser.parseExpr(script).get.value
     },
     expectedResult = {
-      Right(
+      res: Either[String, (EXPR, TYPE)] => res shouldBe Right(
         (LET_BLOCK(
            LET("a", LET_BLOCK(LET("$match0", REF("p")), LET_BLOCK(LET("$match1", REF("p")), CONST_LONG(1)))),
            LET_BLOCK(LET("b", LET_BLOCK(LET("$match0", REF("p")), CONST_LONG(2))),
@@ -249,7 +274,9 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
         )
       )
     ),
-    expectedResult = Left("Compilation failed: Value 'foo' already defined in the scope in -1--1")
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Left("Compilation failed: Value 'foo' already defined in the scope in -1--1")
+      }
   )
 
   treeTypeTest("pattern matching - deny shadowing in non-ref")(
@@ -276,7 +303,9 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
         )
       )
     ),
-    expectedResult = Left("Compilation failed: Value 'p' already defined in the scope in -1--1")
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Left("Compilation failed: Value 'p' already defined in the scope in -1--1")
+      }
   )
 
   treeTypeTest("pattern matching - deny matching with single non-existing type")(
@@ -303,8 +332,10 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
         )
       )
     ),
-    expectedResult = Left(
-      "Compilation failed: Value 'p1' declared as non-existing type, while all possible types are List(Point, PointB, Boolean, Int, PointA, ByteVector, Unit, String) in -1--1")
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] =>
+          res.left.get.startsWith("Compilation failed: Undefined type: `Point0`, expected: PointA, PointB") shouldBe true
+      }
   )
 
   treeTypeTest("Invalid LET")(
@@ -314,44 +345,58 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
       Expressions.LET(AnyPos, Expressions.PART.INVALID(Pos(0, 1), "can't parse"), Expressions.TRUE(AnyPos), Seq.empty),
       Expressions.REF(AnyPos, Expressions.PART.VALID(AnyPos, "x"))
     ),
-    expectedResult = Left("Compilation failed: can't parse in 0-1")
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Left("Compilation failed: can't parse in 0-1")
+      }
   )
 
   treeTypeTest("Invalid GETTER")(
     ctx = compilerContext,
     expr =
       Expressions.GETTER(AnyPos, Expressions.REF(AnyPos, Expressions.PART.VALID(AnyPos, "x")), Expressions.PART.INVALID(Pos(2, 3), "can't parse")),
-    expectedResult = Left("Compilation failed: can't parse in 2-3")
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Left("Compilation failed: can't parse in 2-3")
+      }
   )
 
   treeTypeTest("Invalid BYTESTR")(
     ctx = compilerContext,
     expr = Expressions.CONST_BYTESTR(AnyPos, Expressions.PART.INVALID(AnyPos, "can't parse")),
-    expectedResult = Left("Compilation failed: can't parse in -1--1")
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Left("Compilation failed: can't parse in -1--1")
+      }
   )
 
   treeTypeTest("Invalid STRING")(
     ctx = compilerContext,
     expr = Expressions.CONST_STRING(AnyPos, Expressions.PART.INVALID(AnyPos, "can't parse")),
-    expectedResult = Left("Compilation failed: can't parse in -1--1")
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Left("Compilation failed: can't parse in -1--1")
+      }
   )
 
   treeTypeTest("Invalid REF")(
     ctx = compilerContext,
     expr = Expressions.REF(AnyPos, Expressions.PART.INVALID(AnyPos, "can't parse")),
-    expectedResult = Left("Compilation failed: can't parse in -1--1")
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Left("Compilation failed: can't parse in -1--1")
+      }
   )
 
   treeTypeTest("Invalid FUNCTION_CALL")(
     ctx = compilerContext,
     expr = Expressions.FUNCTION_CALL(AnyPos, Expressions.PART.INVALID(AnyPos, "can't parse"), List.empty),
-    expectedResult = Left("Compilation failed: can't parse in -1--1")
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Left("Compilation failed: can't parse in -1--1")
+      }
   )
 
   treeTypeTest("INVALID")(
     ctx = compilerContext,
     expr = Expressions.INVALID(AnyPos, "###"),
-    expectedResult = Left("Compilation failed: ### in -1--1")
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Left("Compilation failed: ### in -1--1")
+      }
   )
 
   private val dropRightFunctionName: String = dropRightBytes.name
@@ -363,7 +408,12 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
       Expressions.PART.VALID(AnyPos, dropRightFunctionName),
       List(Expressions.CONST_BYTESTR(AnyPos, Expressions.PART.VALID(AnyPos, ByteStr.empty)), Expressions.CONST_LONG(AnyPos, 1))
     ),
-    expectedResult = Right((FUNCTION_CALL(dropRightBytes.header, List(CONST_BYTESTR(ByteStr.empty), CONST_LONG(1))), BYTESTR))
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right((
+          FUNCTION_CALL(dropRightBytes.header, List(CONST_BYTESTR(ByteStr.empty).explicitGet(), CONST_LONG(1))),
+          BYTESTR
+        ))
+      }
   )
 
   treeTypeTest("user function overloading 2")(
@@ -373,7 +423,12 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
       Expressions.PART.VALID(AnyPos, dropRightFunctionName),
       List(Expressions.CONST_STRING(AnyPos, Expressions.PART.VALID(AnyPos, "")), Expressions.CONST_LONG(AnyPos, 1))
     ),
-    expectedResult = Right((FUNCTION_CALL(dropRightString.header, List(CONST_STRING(""), CONST_LONG(1))), STRING))
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right((
+          FUNCTION_CALL(dropRightString.header, List(CONST_STRING("").explicitGet(), CONST_LONG(1))),
+          STRING
+        ))
+      }
   )
 
   treeTypeTest("incorrect user function overloading")(
@@ -383,7 +438,9 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
       Expressions.PART.VALID(AnyPos, dropRightFunctionName),
       List(Expressions.TRUE(AnyPos), Expressions.CONST_LONG(AnyPos, 1))
     ),
-    expectedResult = Left("Compilation failed: Can't find a function overload 'dropRight'(Boolean, Int) in -1--1")
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Left("Compilation failed: Can't find a function overload 'dropRight'(Boolean, Int) in -1--1")
+      }
   )
 
   treeTypeTest("user function definition and usage")(
@@ -398,17 +455,45 @@ class ExpressionCompilerV1Test extends PropSpec with PropertyChecks with Matcher
       ),
       Expressions.FUNCTION_CALL(AnyPos, Expressions.PART.VALID(AnyPos, "id"), List(Expressions.CONST_LONG(AnyPos, 1L)))
     ),
-    expectedResult = Right(
-      (BLOCK(
-         FUNC("id", List("x"), REF("x")),
-         FUNCTION_CALL(FunctionHeader.User("id"), List(CONST_LONG(1L)))
-       ),
-       LONG))
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right(
+          (BLOCK(
+             FUNC("id", List("x"), REF("x")),
+             FUNCTION_CALL(FunctionHeader.User("id"), List(CONST_LONG(1L)))
+           ),
+           LONG))
+      }
   )
 
-  private def treeTypeTest(propertyName: String)(expr: Expressions.EXPR, expectedResult: Either[String, (EXPR, TYPE)], ctx: CompilerContext): Unit =
+  treeTypeTest("union type inferrer with list")(
+    ctx = compilerContext,
+    expr = {
+      val script = """[1,""]"""
+      Parser.parseExpr(script).get.value
+    },
+    expectedResult = {
+        res: Either[String, (EXPR, TYPE)] => res shouldBe Right(
+          (FUNCTION_CALL(
+             FunctionHeader.Native(1100),
+             List(
+               CONST_LONG(1),
+               FUNCTION_CALL(
+                 FunctionHeader.Native(1100),
+                 List(
+                   CONST_STRING("").explicitGet(),
+                   REF("nil")
+                 )
+               )
+             )
+           ),
+           LIST(UNION(List(LONG, STRING))))
+        )
+      }
+  )
+
+  private def treeTypeTest(propertyName: String)(expr: Expressions.EXPR, expectedResult: Either[String, (EXPR, TYPE)] => org.scalatest.compatible.Assertion, ctx: CompilerContext): Unit =
     property(propertyName) {
-      compiler.ExpressionCompiler(ctx, expr) shouldBe expectedResult
+      expectedResult(compiler.ExpressionCompiler(ctx, expr))
     }
 
 }

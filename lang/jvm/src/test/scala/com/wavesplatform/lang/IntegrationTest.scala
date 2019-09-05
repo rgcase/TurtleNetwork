@@ -2,20 +2,21 @@ package com.wavesplatform.lang
 
 import cats.data.EitherT
 import cats.kernel.Monoid
+import com.wavesplatform.common.utils.EitherExt2
 import com.wavesplatform.lang.Common._
 import com.wavesplatform.lang.Testing._
-import com.wavesplatform.lang.StdLibVersion._
+import com.wavesplatform.lang.directives.values._
 import com.wavesplatform.lang.v1.CTX
 import com.wavesplatform.lang.v1.compiler.Terms._
-import com.wavesplatform.lang.v1.compiler.Types.{FINAL, LONG}
+import com.wavesplatform.lang.v1.compiler.Types.{BYTESTR, FINAL, LONG, STRING}
 import com.wavesplatform.lang.v1.compiler.{ExpressionCompiler, Terms}
 import com.wavesplatform.lang.v1.evaluator.EvaluatorV1
 import com.wavesplatform.lang.v1.evaluator.ctx._
 import com.wavesplatform.lang.v1.evaluator.ctx.impl.{PureContext, _}
 import com.wavesplatform.lang.v1.parser.Parser
 import com.wavesplatform.lang.v1.testing.ScriptGen
-import org.scalatest.prop.PropertyChecks
 import org.scalatest.{Matchers, PropSpec}
+import org.scalatestplus.scalacheck.{ScalaCheckPropertyChecks => PropertyChecks}
 
 class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with Matchers with NoShrink {
 
@@ -119,12 +120,15 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
     eval[EVALUATED](sampleScript, Some(pointBInstance)) shouldBe evaluated(1)
   }
 
-  private def eval[T <: EVALUATED](code: String, pointInstance: Option[CaseObj] = None, pointType: FINAL = AorBorC): Either[String, T] = {
+  private def eval[T <: EVALUATED](code: String,
+                                   pointInstance: Option[CaseObj] = None,
+                                   pointType: FINAL = AorBorC,
+                                   ctxt: CTX = CTX.empty): Either[String, T] = {
     val untyped                                                = Parser.parseExpr(code).get.value
     val lazyVal                                                = LazyVal(EitherT.pure(pointInstance.orNull))
     val stringToTuple: Map[String, ((FINAL, String), LazyVal)] = Map(("p", ((pointType, "Test variable"), lazyVal)))
     val ctx: CTX =
-      Monoid.combineAll(Seq(PureContext.build(V3), CTX(sampleTypes, stringToTuple, Array.empty), addCtx))
+      Monoid.combineAll(Seq(PureContext.build(Global, V3), CTX(sampleTypes, stringToTuple, Array.empty), addCtx, ctxt))
     val typed = ExpressionCompiler(ctx.compilerContext, untyped)
     typed.flatMap(v => EvaluatorV1[T](ctx.evaluationContext, v._1))
   }
@@ -324,7 +328,7 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
     }
 
     val context = Monoid.combine(
-      PureContext.build(V1).evaluationContext,
+      PureContext.build(Global, V1).evaluationContext,
       EvaluationContext(
         typeDefs = Map.empty,
         letDefs = Map("x"                -> LazyVal(EitherT.pure(CONST_LONG(3l)))),
@@ -338,7 +342,7 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
 
   property("context won't change after execution of an inner block") {
     val context = Monoid.combine(
-      PureContext.build(V1).evaluationContext,
+      PureContext.build(Global, V1).evaluationContext,
       EvaluationContext(
         typeDefs = Map.empty,
         letDefs = Map("x" -> LazyVal(EitherT.pure(CONST_LONG(3l)))),
@@ -359,12 +363,49 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
     ev[CONST_LONG](context, expr) shouldBe evaluated(8)
   }
 
-  property("list constructor primitive") {
+  property("listN constructor primitive") {
     val src =
       """
-        |List(1,2)
+        |cons(1, cons(2, cons(3, cons(4, cons(5, nil)))))
       """.stripMargin
-    eval[EVALUATED](src) shouldBe evaluated(List(1, 2))
+    eval[EVALUATED](src) shouldBe evaluated(List(1, 2, 3, 4, 5))
+  }
+
+  property("listN constructor binary op") {
+    val src =
+      """
+        |1::2::3::4::5::nil
+      """.stripMargin
+    eval[EVALUATED](src) shouldBe evaluated(List(1, 2, 3, 4, 5))
+  }
+
+  property("list syntax sugar") {
+    val src =
+      """
+        |[1,2,3, 4, 5]
+      """.stripMargin
+    eval[EVALUATED](src) shouldBe evaluated(List(1, 2, 3, 4, 5))
+  }
+
+  property("LIST access IndexOutOfBounds") {
+    val src =
+      """
+        |[1].getElement(1)
+      """.stripMargin
+    eval(src) should produce("Index 1 out of bounds for length 1")
+
+    def testListAccessError(length: Int, index: Int): Unit = {
+      eval(
+        s"""
+           | let a = ${List.fill(length)(1).mkString("[", ", ", "]")}
+           | a[$index]
+         """.stripMargin
+      ) should produce(s"Index $index out of bounds for length $length")
+    }
+
+    testListAccessError(length = 3, index = 3)
+    testListAccessError(length = 3, index = -1)
+    testListAccessError(length = 0, index = 1)
   }
 
   property("list constructor for different data entries") {
@@ -373,32 +414,583 @@ class IntegrationTest extends PropSpec with PropertyChecks with ScriptGen with M
         |let x = DataEntry("foo",1)
         |let y = DataEntry("bar","2")
         |let z = DataEntry("baz","2")
-        |List(x,y,z)
+        |[x,y,z]
       """.stripMargin
     eval[EVALUATED](src) shouldBe Right(
       ARR(Vector(
-        CaseObj(dataEntryType.typeRef, Map("key" -> CONST_STRING("foo"), "value" -> CONST_LONG(1))),
-        CaseObj(dataEntryType.typeRef, Map("key" -> CONST_STRING("bar"), "value" -> CONST_STRING("2"))),
-        CaseObj(dataEntryType.typeRef, Map("key" -> CONST_STRING("baz"), "value" -> CONST_STRING("2")))
+        CaseObj(
+          dataEntryType,
+          Map(
+            "key"   -> CONST_STRING("foo").explicitGet(),
+            "value" -> CONST_LONG(1)
+          )
+        ),
+        CaseObj(
+          dataEntryType,
+          Map(
+            "key"   -> CONST_STRING("bar").explicitGet(),
+            "value" -> CONST_STRING("2").explicitGet()
+          )
+        ),
+        CaseObj(
+          dataEntryType,
+          Map(
+            "key"   -> CONST_STRING("baz").explicitGet(),
+            "value" -> CONST_STRING("2").explicitGet()
+          )
+        )
       )))
   }
 
-  property("ensure user function: success") {
+  property("allow 'throw' in '==' arguments") {
     val src =
-      """
-        |let x = true
-        |ensure(x, "test fail")
-      """.stripMargin
-    eval[EVALUATED](src) shouldBe Right(TRUE)
+      """true == throw("test passed")"""
+    eval[EVALUATED](src) shouldBe Left("test passed")
   }
 
-  property("ensure user function: fail") {
+  property("ban to compare different types") {
     val src =
-      """
-        |let x = false
-        |ensure(x, "test fail")
-      """.stripMargin
-    eval[EVALUATED](src) shouldBe Left("test fail")
+      """true == "test passed" """
+    eval[EVALUATED](src) should produce("Compilation failed: Can't match inferred types")
   }
 
+  property("postfix syntax (one argument)") {
+    val src =
+      """
+        | let list = [1, 2, 3]
+        | list.getElement(1)
+      """.stripMargin
+
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(2))
+  }
+
+  property("postfix syntax (no arguments)") {
+    val src =
+      """unit.isDefined()"""
+    eval[EVALUATED](src) shouldBe Right(FALSE)
+  }
+
+  property("postfix syntax (many argument)") {
+    val src =
+      """ 5.fraction(7,2) """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(17L))
+  }
+
+  property("postfix syntax (users defined function)") {
+    val src =
+      """
+        |func dub(s:String) = { s+s }
+        |"qwe".dub()
+      """.stripMargin
+    eval[EVALUATED](src) shouldBe CONST_STRING("qweqwe")
+  }
+
+  property("extract UTF8 string") {
+    val src =
+      """ base58'2EtvziXsJaBRS'.toUtf8String() """
+    eval[EVALUATED](src) shouldBe CONST_STRING("abcdefghi")
+  }
+
+  property("toInt from ByteVector") {
+    val src =
+      """ base58'2EtvziXsJaBRS'.toInt() """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(0x6162636465666768L))
+  }
+
+  property("toInt with explicit zero offset") {
+    val src =
+      """ base58'2EtvziXsJaBRS'.toInt(0) """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(0x6162636465666768L))
+  }
+
+  property("toInt by offset") {
+    val src =
+      """ base58'2EtvziXsJaBRS'.toInt(1) """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(0x6263646566676869L))
+  }
+
+  property("toInt from end of max sized ByteVector by offset") {
+    val array = new Array[Byte](65536)
+    for (i <- 65528 to 65535) array(i) = 1
+    val src =
+      s""" arr.toInt(65528) """
+    eval[EVALUATED](src, ctxt = CTX(Seq(),
+      Map("arr" -> ((BYTESTR -> "max sized ByteVector") -> LazyVal(EitherT.fromEither(CONST_BYTESTR(array))))), Array())
+    ) shouldBe Right(CONST_LONG(0x0101010101010101L))
+  }
+
+  property("toInt by offset (partial)") {
+    val src =
+      """ base58'2EtvziXsJaBRS'.toInt(2) """
+    eval[EVALUATED](src) should produce("IndexOutOfBounds")
+  }
+
+  property("toInt by offset (out of bounds)") {
+    val src =
+      """ base58'2EtvziXsJaBRS'.toInt(10) """
+    eval[EVALUATED](src) should produce("IndexOutOfBounds")
+  }
+
+  property("toInt by Long.MaxValue offset (out of bounds)") {
+    val src =
+      s""" base58'2EtvziXsJaBRS'.toInt(${Long.MaxValue}) """
+    eval[EVALUATED](src) should produce("IndexOutOfBounds")
+  }
+
+  property("toInt by offset (negative)") {
+    val src =
+      """ base58'2EtvziXsJaBRS'.toInt(-1) """
+    eval[EVALUATED](src) should produce("IndexOutOfBounds")
+  }
+
+  property("toInt by offset (negative Long.MinValue)") {
+    val src =
+      s""" base58'2EtvziXsJaBRS'.toInt(${Long.MinValue}) """
+    eval[EVALUATED](src) should produce("IndexOutOfBounds")
+  }
+
+  property("toInt from < 8 bytes (Buffer underflow)") {
+    val src =
+      """ "AAAAAAA".toBytes().toInt() """
+    eval[EVALUATED](src) should produce("Buffer underflow")
+  }
+
+  property("toInt from < 8 bytes by zero offset (Buffer underflow)") {
+    val src =
+      """ "AAAAAAA".toBytes().toInt(0) """
+    eval[EVALUATED](src) should produce("IndexOutOfBounds")
+  }
+
+  property("toInt from 0 bytes (Buffer underflow)") {
+    val src =
+      """ "".toBytes().toInt() """
+    eval[EVALUATED](src) should produce("Buffer underflow")
+  }
+
+  property("toInt from 0 bytes by zero offset (Buffer underflow)") {
+    val src =
+      """ "".toBytes().toInt(0) """
+    eval[EVALUATED](src) should produce("IndexOutOfBounds")
+  }
+
+  property("toInt from 0 bytes by offset (IndexOutOfBounds)") {
+    val src =
+      """ "".toBytes().toInt(1) """
+    eval[EVALUATED](src) should produce("IndexOutOfBounds")
+  }
+
+  property("indexOf") {
+    val src =
+      """ "qweqwe".indexOf("we") """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(1L))
+  }
+
+  property("indexOf with zero offset") {
+    val src =
+      """ "qweqwe".indexOf("qw", 0) """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(0L))
+  }
+
+  property("indexOf with start offset") {
+    val src =
+      """ "qweqwe".indexOf("we", 2) """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(4L))
+  }
+
+  property("indexOf from end of max sized string") {
+    val str = "a" * 32766 + "z"
+    val src =
+      """ str.indexOf("z", 32766) """
+    eval[EVALUATED](src, ctxt = CTX(Seq(),
+      Map("str" -> ((STRING -> "max sized String") -> LazyVal(EitherT.pure(CONST_STRING(str).explicitGet())))), Array())
+    ) shouldBe Right(CONST_LONG(32766L))
+  }
+
+  property("indexOf (not present)") {
+    val src =
+      """ "qweqwe".indexOf("ww") """
+    eval[EVALUATED](src) shouldBe Right(unit)
+  }
+
+  property("indexOf from empty string") {
+    val src =
+      """ "".indexOf("!") """
+    eval[EVALUATED](src) shouldBe Right(unit)
+  }
+
+  property("indexOf from empty string with offset") {
+    val src =
+      """ "".indexOf("!", 1) """
+    eval[EVALUATED](src) shouldBe Right(unit)
+  }
+
+  property("indexOf from string with Long.MaxValue offset") {
+    val src =
+      s""" "abc".indexOf("c", ${Long.MaxValue}) """
+    eval[EVALUATED](src) shouldBe Right(unit)
+  }
+
+  property("indexOf from string with negative offset") {
+    val src =
+      """ "abc".indexOf("a", -1) """
+    eval[EVALUATED](src) shouldBe Right(unit)
+  }
+
+  property("indexOf from string with negative Long.MinValue offset") {
+    val src =
+      s""" "abc".indexOf("a", ${Long.MinValue}) """
+    eval[EVALUATED](src) shouldBe Right(unit)
+  }
+
+  property("indexOf empty string from non-empty string") {
+    val src =
+      """ "abc".indexOf("") """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(0))
+  }
+
+  property("indexOf empty string from empty string") {
+    val src =
+      """ "".indexOf("") """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(0))
+  }
+
+  property("lastIndexOf") {
+    val src =
+      """ "qweqwe".lastIndexOf("we") """
+    eval(src) shouldBe Right(CONST_LONG(4))
+  }
+
+  property("lastIndexOf with zero offset") {
+    val src =
+      """ "qweqwe".lastIndexOf("qw", 0) """
+    eval(src) shouldBe Right(CONST_LONG(0))
+  }
+
+  property("lastIndexOf with start offset") {
+    val src =
+      """ "qweqwe".lastIndexOf("we", 4) """
+    eval(src) shouldBe Right(CONST_LONG(4L))
+  }
+
+  property("lastIndexOf from end of max sized string") {
+    val str = "a" * 32766 + "z"
+    val src =
+      """ str.lastIndexOf("z", 32766) """
+    eval(src, ctxt = CTX(Seq(),
+      Map("str" -> ((STRING -> "max sized String") -> LazyVal(EitherT.fromEither(CONST_STRING(str))))), Array())
+    ) shouldBe Right(CONST_LONG(32766L))
+  }
+
+  property("lastIndexOf (not present)") {
+    val src =
+      """ "qweqwe".lastIndexOf("ww") """
+    eval(src) shouldBe Right(unit)
+  }
+
+  property("lastIndexOf from empty string") {
+    val src =
+      """ "".lastIndexOf("!") """
+    eval(src) shouldBe Right(unit)
+  }
+
+  property("lastIndexOf from empty string with offset") {
+    val src =
+      """ "".lastIndexOf("!", 1) """
+    eval(src) shouldBe Right(unit)
+  }
+
+  property("lastIndexOf from string with Int.MaxValue offset") {
+    val src =
+      s""" "abc".lastIndexOf("c", ${Int.MaxValue}) """
+    eval(src) shouldBe Right(CONST_LONG(2))
+  }
+
+  property("lastIndexOf from string with Long.MaxValue offset") {
+    val src =
+      s""" "abc".lastIndexOf("c", ${Long.MaxValue}) """
+    eval(src) shouldBe Right(CONST_LONG(2))
+  }
+
+  property("lastIndexOf from string with negative offset") {
+    val src =
+      """ "abc".lastIndexOf("a", -1) """
+    eval(src) shouldBe Right(unit)
+  }
+
+  property("lastIndexOf from string with negative Long.MinValue offset") {
+    val src =
+      s""" "abc".lastIndexOf("a", ${Long.MinValue}) """
+    eval(src) shouldBe Right(unit)
+  }
+
+  property("lastIndexOf empty string from non-empty string") {
+    val str = "abcde"
+    val src =
+      s""" "$str".lastIndexOf("") """
+    eval(src) shouldBe Right(CONST_LONG(str.length))
+  }
+
+  property("lastIndexOf empty string from empty string") {
+    val src =
+      """ "".lastIndexOf("") """
+    eval(src) shouldBe Right(CONST_LONG(0))
+  }
+
+  property("split") {
+    val src =
+      """ "q:we:.;q;we:x;q.we".split(":.;") """
+    eval[EVALUATED](src) shouldBe Right(ARR(IndexedSeq(
+      CONST_STRING("q:we").explicitGet(),
+      CONST_STRING("q;we:x;q.we").explicitGet()
+    )))
+  }
+
+  property("split separate correctly") {
+    val src =
+      """ "str1;str2;str3;str4".split(";") """
+    eval[EVALUATED](src) shouldBe Right(ARR(IndexedSeq(
+      CONST_STRING("str1").explicitGet(),
+      CONST_STRING("str2").explicitGet(),
+      CONST_STRING("str3").explicitGet(),
+      CONST_STRING("str4").explicitGet()
+    )))
+  }
+
+  property("split separator at the end") {
+    val src =
+      """ "str1;str2;".split(";") """
+    eval[EVALUATED](src) shouldBe Right(ARR(IndexedSeq(
+      CONST_STRING("str1").explicitGet(),
+      CONST_STRING("str2").explicitGet(),
+      CONST_STRING("").explicitGet()
+    )))
+  }
+
+  property("split double separator") {
+    val src =
+      """ "str1;;str2;str3".split(";") """
+    eval[EVALUATED](src) shouldBe Right(ARR(IndexedSeq(
+      CONST_STRING("str1").explicitGet(),
+      CONST_STRING("").explicitGet(),
+      CONST_STRING("str2").explicitGet(),
+      CONST_STRING("str3").explicitGet()
+    )))
+  }
+
+  property("parseInt") {
+    val src =
+      """ "42".parseInt() """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(42L))
+  }
+
+  property("parseInt Long.MaxValue") {
+    val num = Long.MaxValue
+    val src =
+      s""" "${num.toString}".parseInt() """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(num))
+  }
+
+  property("parseInt Long.MinValue") {
+    val num = Long.MinValue
+    val src =
+      s""" "${num.toString}".parseInt() """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(num))
+  }
+
+  property("parseIntValue") {
+    val src =
+      """ "42".parseIntValue() """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(42L))
+  }
+
+  property("parseIntValue Long.MaxValue") {
+    val num = Long.MaxValue
+    val src =
+      s""" "${num.toString}".parseIntValue() """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(num))
+  }
+
+  property("parseIntValue Long.MinValue") {
+    val num = Long.MinValue
+    val src =
+      s""" "${num.toString}".parseIntValue() """
+    eval[EVALUATED](src) shouldBe Right(CONST_LONG(num))
+  }
+
+  property("parseInt fail") {
+    val src =
+      """ "x42".parseInt() """
+    eval[EVALUATED](src) shouldBe Right(unit)
+  }
+
+  property("parseIntValue fail when string starts with non-digit") {
+    val src =
+      """ "x42".parseIntValue() """
+    eval[EVALUATED](src) shouldBe 'left
+  }
+
+  property("parseInt fail when string ends with non-digit") {
+    val src =
+      """ "42x".parseInt() """
+    eval[EVALUATED](src) shouldBe Right(unit)
+  }
+
+  property("parseIntValue fail when string ends with non-digit") {
+    val src =
+      """ "42x".parseIntValue() """
+    eval[EVALUATED](src) shouldBe 'left
+  }
+
+  property("parseInt fail when string is empty") {
+    val src =
+      """ "".parseInt() """
+    eval[EVALUATED](src) shouldBe Right(unit)
+  }
+
+  property("parseIntValue fail when string is empty") {
+    val src =
+      """ "".parseIntValue() """
+    eval[EVALUATED](src) shouldBe 'left
+  }
+
+  property("matching case with non-existing type") {
+    val sampleScript =
+      """|
+         | let a = if (true) then 1 else "str"
+         | match a {
+         |   case _: UndefinedType => 0
+         |   case _                => 1
+         | }
+         |
+      """.stripMargin
+    eval(sampleScript) should produce("Undefined type: `UndefinedType` of variable `a`, expected: Int, String")
+  }
+
+  property("big let assignment chain") {
+    val count = 5000
+    val script =
+      s"""
+         | let a0 = 1
+         | ${1 to count map (i => s"let a$i = a${i - 1}") mkString "\n"}
+         | a$count == a$count
+      """.stripMargin
+
+    eval[EVALUATED](script, None) shouldBe Right(CONST_BOOLEAN(true))
+  }
+
+  property("big function assignment chain") {
+    val count = 2000
+    val script =
+      s"""
+         | func a0() = {
+         |   1 + 1
+         | }
+         | ${1 to count map (i => s"func a$i() = a${i - 1}()") mkString "\n"}
+         | a$count() == a$count()
+      """.stripMargin
+
+    eval[EVALUATED](script, None) shouldBe Right(CONST_BOOLEAN(true))
+  }
+
+  property("big let assignment chain with function") {
+    val count = 5000
+    val script =
+      s"""
+         | let a0 = 1
+         | ${1 to count map (i => s"let a$i = a${i - 1} + 1") mkString "\n"}
+         | a$count == a$count
+      """.stripMargin
+
+    eval[EVALUATED](script, None) shouldBe Right(CONST_BOOLEAN(true))
+  }
+
+  property("math functions") {
+    eval[EVALUATED]("pow(12, 1, 3456, 3, 2, DOWN)", None) shouldBe Right(CONST_LONG(187))
+    eval[EVALUATED]("pow(12, 1, 3456, 3, 2, UP)", None) shouldBe Right(CONST_LONG(188))
+    eval[EVALUATED]("pow(0, 1, 3456, 3, 2, UP)", None) shouldBe Right(CONST_LONG(0))
+    eval[EVALUATED]("pow(20, 1, -1, 0, 4, DOWN)", None) shouldBe Right(CONST_LONG(5000))
+    eval[EVALUATED]("pow(-20, 1, -1, 0, 4, DOWN)", None) shouldBe Right(CONST_LONG(-5000))
+    eval[EVALUATED]("pow(0, 1, -1, 0, 4, DOWN)", None) shouldBe 'left
+    eval[EVALUATED]("log(16, 0, 2, 0, 0, CEILING)", None) shouldBe Right(CONST_LONG(4))
+    eval[EVALUATED]("log(16, 0, -2, 0, 0, CEILING)", None) shouldBe 'left
+    eval[EVALUATED]("log(-16, 0, 2, 0, 0, CEILING)", None) shouldBe 'left
+  }
+
+  property("math functions scale limits") {
+    eval("pow(2,  0, 2, 9, 0, UP)") should produce("out of range 0-8")
+    eval("log(2,  0, 2, 9, 0, UP)") should produce("out of range 0-8")
+    eval("pow(2, -2, 2, 0, 5, UP)") should produce("out of range 0-8")
+    eval("log(2, -2, 2, 0, 5, UP)") should produce("out of range 0-8")
+  }
+
+  property("pow result size max") {
+    eval("pow(2, 0, 62, 0, 0, UP)") shouldBe Right(CONST_LONG(Math.pow(2, 62).toLong))
+    eval("pow(2, 0, 63, 0, 0, UP)") should produce("out of long range")
+  }
+
+  property("pow result size abs min") {
+    eval("pow(10, 0, -8, 0, 8, HALFUP)") shouldBe Right(CONST_LONG(1))
+    eval("pow(10, 0, -9, 0, 8, HALFUP)") shouldBe Right(CONST_LONG(0))
+  }
+
+  property("concat empty list") {
+    val script =
+      s"""
+         | let l = if (true) then cons(1, nil) else nil
+         | let concat = 0 :: l
+         | concat == [0, 1]
+         |
+      """.stripMargin
+
+    eval[EVALUATED](script, None) shouldBe Right(CONST_BOOLEAN(true))
+  }
+
+  property("list type inferrer") {
+    val script =
+      s"""
+         | let l = if (true) then [1] else ["str"]
+         | let n = "qqq" :: l
+         | match n[1] {
+         |   case i: Int => i == 1
+         |   case s: String => false
+         | } &&
+         | match n[0] {
+         |   case i: Int => false
+         |   case s: String => s == "qqq"
+         | }
+      """.stripMargin
+
+    eval[EVALUATED](script, None) shouldBe Right(CONST_BOOLEAN(true))
+  }
+
+  property("matching parameterized types") {
+    val script =
+      s"""
+         | func dosSigVerify() = {
+         |    let result = if true then [DataEntry("a", "a")] else ""
+         |    let entry = match result[0] {
+         |        case r:DataEntry => r
+         |        case _ => throw("err")
+         |    }
+         |    WriteSet(result)
+         | }
+         |
+      """.stripMargin
+
+    eval[EVALUATED](script, None) should produce("expected: List[T], actual: List[DataEntry]|String")
+  }
+
+  property("extract functions with message") {
+    val message = "Custom error message"
+    def script(error: Boolean): String =
+      s"""
+         |
+         | let a = if ($error) then unit else 1
+         | valueOrErrorMessage(a, "$message")
+         |
+       """.stripMargin
+
+    eval(script(error = false)) shouldBe Right(CONST_LONG(1))
+    eval(script(error = true))  shouldBe Left(message)
+  }
 }
