@@ -3,7 +3,6 @@ package com.wavesplatform.it.sync
 import com.typesafe.config.{Config, ConfigFactory}
 import com.wavesplatform.it.api.SyncHttpApi._
 import com.wavesplatform.it.transactions.NodesFromDocker
-import com.wavesplatform.it.util._
 import org.scalatest.{CancelAfterFailure, FunSuite, Matchers}
 
 

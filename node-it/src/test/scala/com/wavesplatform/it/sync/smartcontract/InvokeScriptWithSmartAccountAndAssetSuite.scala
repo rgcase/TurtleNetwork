@@ -188,7 +188,7 @@ class InvokeScriptWithSmartAccountAndAssetSuite extends BaseTransactionSuite wit
         smartCaller.address,
         dApp.address,
         Some("justWriteData"),
-        fee = 0.00899999.waves
+        fee = 0.00899999.TN
       ),
       s"does not exceed minimal value of 900000 WAVES"
     )
@@ -202,7 +202,7 @@ class InvokeScriptWithSmartAccountAndAssetSuite extends BaseTransactionSuite wit
         dApp.address,
         Some("spendMaxFee"),
         payment = Seq(Payment(paymentAmount, IssuedAsset(ByteStr.decodeBase58(asset2).get))),
-        fee = 0.05299999.waves
+        fee = 0.05299999.TN
       ),
       s"with 12 total scripts invoked does not exceed minimal value of 5300000"
     )

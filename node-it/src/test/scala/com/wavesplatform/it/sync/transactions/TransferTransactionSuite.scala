@@ -88,7 +88,7 @@ class TransferTransactionSuite extends BaseTransactionSuite with CancelAfterFail
     for (v <- supportedVersions) {
       val (secondBalance, secondEffBalance) = miner.accountBalances(secondAddress)
 
-      assertBadRequestAndResponse(sender.transfer(secondAddress, firstAddress, secondBalance + 1.TN,  minFee, version = v),
+      assertBadRequestAndResponse(sender.transfer(secondAddress, firstAddress, secondBalance + 1,  minFee, version = v),
                                   "Attempt to transfer unavailable funds")
       miner.assertBalances(secondAddress, secondBalance, secondEffBalance)
     }
