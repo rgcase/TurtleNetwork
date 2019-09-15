@@ -1,7 +1,7 @@
 <?xml version="1.0" encoding="UTF-8"?>
 <configuration scan="true" scanPeriod="30 seconds">
     <property name="default.pattern" value="%date %-5level [%.25thread] %logger{26} - %msg%n"/>
-    <property name="logback.file.final-directory" value="${logback.file.directory:-${waves.directory}/log}"/>
+    <property name="logback.file.final-directory" value="${logback.file.directory:-${TN.directory}/log}"/>
 
     <logger name="io.netty" level="INFO"/>
     <logger name="io.swagger" level="INFO"/>
@@ -27,7 +27,7 @@
     <property name="logback.file.enabled" value="true"/>
     <property name="logback.stdout.enabled" value="true"/>
 
-    <include optional="true" file="${waves.config.directory:-.}/logback.xml"/>
+    <include optional="true" file="${TN.config.directory:-.}/logback.xml"/>
 
     <if condition='property("logback.stdout.enabled").contains("true")'>
         <then>
